@@ -1,6 +1,8 @@
 # app-command
 
-app-command is a command-line tool for exerting fine-grained control over how to launch or give focus to applications when working with multiple Windows Virtual Desktops. It is designed for use with Stream Deck and similar macro utilities.
+**app-command** is a command-line tool for exercising fine-grained control over how to launch or give focus to applications when working with multiple Windows Virtual Desktops. It is designed for use with Stream Deck and similar macro utilities.
+
+This repository also contains a supplemental script called **go-to-desktop.py** which allows for command-line navigation to specific virtual desktops by name or by number.
 
 ## Installation
 
