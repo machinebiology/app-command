@@ -117,6 +117,8 @@ pythonw app-command.py find_anywhere calculator bring_to_user -p C:\windows\syst
 
 - (Launch the app if it's not already running)
 
+---
+
 #### Find any `Calculator` window on any desktop and bring it to the user:
 
 ```bash
@@ -124,6 +126,8 @@ pythonw app-command.py find_anywhere calculator bring_to_user
 ```
 
 - (DON'T launch the app if it's not already running)
+
+---
 
 #### Find any `Calculator` window on the current desktop and bring it to the user:
 
@@ -133,6 +137,8 @@ pythonw app-command.py find_here calculator bring_to_user -p calc.exe
 
 - (Launch the app if it's not already running)
 
+---
+
 #### Find any `Calculator` window on any desktop, go to its desktop, and focus the app:
 
 ```bash
@@ -141,6 +147,8 @@ pythonw app-command.py find_anywhere calculator go_to_window -p C:\windows\syste
 
 - (Launch the app on the current desktop if it isn't already running)
 
+---
+
 #### Find any `Excel` window on any desktop and move both the window & the user to the "Data" desktop:
 
 ```bash
@@ -148,6 +156,8 @@ pythonw app-command.py find_anywhere excel take_to_desktop data -p excel.exe
 ```
 
 - (Launch the app on the "Data" desktop if it isn't already running)
+
+---
 
 #### Find any `Excel` window on any desktop and move both the window & the user to the third desktop from the left:
 
