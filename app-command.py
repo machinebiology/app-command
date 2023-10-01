@@ -39,13 +39,22 @@ def find_app_by_name_substr(name: str, current_desktop_only: bool=False) -> Unio
     """ Get an app by partial name (case-insensitive; return None if not found) """
     
     # Gets window objects including desktop info from the pyvda library
-    apps: list[AppView] = get_apps_by_z_order(switcher_windows=True, current_desktop=current_desktop_only)
+    apps_on_current_desktop: list[AppView] = get_apps_by_z_order(switcher_windows=True, current_desktop=True)
+    apps_on_all_desktops = get_apps_by_z_order(switcher_windows=True, current_desktop=False)
+    apps_on_other_desktops = [app for app in apps_on_all_desktops if app not in apps_on_current_desktop]
+
+    if current_desktop_only:
+        apps = apps_on_current_desktop
+    if not current_desktop_only:
+        # Compile list of apps with those on the current desktop at the top
+        # to preferentially switch to matching apps on the current desktop
+        apps = apps_on_current_desktop + apps_on_other_desktops
+    
     # Gets windows matching the specified title from the pygetwindow library
     windows: list[gw.Window] = gw.getWindowsWithTitle(name)
     for app in apps:
         for w in windows:
             if app.hwnd == w._hWnd:
-                # TODO: Handle multiple matches
                 return app
     return None
     
