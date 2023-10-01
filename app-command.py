@@ -6,11 +6,12 @@ import click
 import pygetwindow as gw
 from pyvda import AppView, get_apps_by_z_order, VirtualDesktop, get_virtual_desktops
 
-# current_desktop = VirtualDesktop.current()
-# print(f"Current desktop is number {current_desktop.number}")
-
-# current_window = AppView.current()
-# print(f"current window: {current_window}")
+def str_to_int(s: str) -> Union[int, None]:
+    """ Convert a string to an integer; return None if not possible """
+    try:
+        return int(s)
+    except ValueError:
+        return None
 
 def find_desktop_by_name(name: str, exact: bool=False) -> Union[VirtualDesktop, None]:
     """ Get a Windows virtual desktop by name (case-insensitive; return None if not found) """
@@ -62,18 +63,23 @@ def launch_app(path: str=None):
 @click.command()
 @click.argument('operation', type=str)
 @click.argument('window_name', type=str, default="")
-@click.argument('desktop', default='go')
+@click.argument('desktop_operation', type=str, default="go_to_window")
+@click.argument('target_desktop', default="")
 # @click.option('-x', '--exact_name_match', is_flag=True, help='If set, only match window title exactly')
 @click.option('-p', '--path', help='Path to the executable to run if no matching window is found')
-def main(operation: str, window_name: str, desktop, path: str=None):
+def main(operation: str, window_name: str, desktop_operation: str, target_desktop: Union[int, str, None], path: str=None):
     """ Finds an application by window title or launches it
     
-    Syntax: [OPERATION] WINDOW_NAME [DESKTOP] [-p PATH]
-    
+    Syntax: OPERATION WINDOW_NAME [DESKTOP_OPERATION] [TARGET_DESKTOP] [-p PATH]
+
+    NOTE: WINDOW_NAME must be specified even during a 'launch' operation
+
     ARGUMENTS:
     - operation:
-        - 'find'
-            - Attempts to find the window and focus it; if not found, launches the app (if path is specified)
+        - 'find' or 'find_anywhere'
+            - Attempts to find the window on any dekstop; if not found, launches the app (if path is specified)
+        - 'find_here'
+            - Attempts to find the window on this desktop only; if not found, launches the app (if path is specified)
         - 'launch'
             - Launches the app without attempting to find it
     
@@ -81,13 +87,14 @@ def main(operation: str, window_name: str, desktop, path: str=None):
         - The title of the window to search for (case-insensitive)
         - If multiple windows match, the first one found will be used
     
-    - desktop:
-        - 'go'
+    - desktop_operation:
+        - 'go_to_window'
             - Switch to the desktop containing the window
-        - 'bring'
+        - 'bring_to_user'
             - Bring the window to the current desktop
-        - 'only_current'
-            - Only search for windows on the current desktop
+        - 'take_to_desktop' DESKTOP_NAME | DESKTOP_NUMBER
+            - Move to the specified desktop name or number
+        
         - NAME
             - Bring the window to the specified desktop name (case-insensitive, allows partial matches)
         - NUMBER
@@ -97,61 +104,70 @@ def main(operation: str, window_name: str, desktop, path: str=None):
     - -p, --path:
         - Path to the executable to run if no matching window is found
     """
-    operations = ['find', 'launch']
-    desktop_operations = ['go', 'bring', 'only_current']
+    operation_synonyms = {
+        'find': 'find_anywhere'
+    }
+    find_operations = ['find_anywhere', 'find_here']
+    operations = [*find_operations, 'launch']
+    desktop_operations = ['go_to_window', 'bring_to_user', 'take_to_desktop']
 
+    # Cast operation name args to lowercase
     operation = operation.lower()
-    desktop = desktop.lower()
+    desktop_operation = desktop_operation.lower()
 
-    search_current_desktop_only = (desktop == 'only_current')
+    # Replace operation synonyms with the canonical operation name
+    if operation in operation_synonyms:
+        operation = operation_synonyms[operation]
 
+    # Validate arguments
+    if operation not in operations:
+        raise ValueError(f"Invalid operation: {operation}")
+    if desktop_operation not in desktop_operations:
+        raise ValueError(f"Invalid desktop_operation: {desktop_operation}")
+
+    # Assume no launch is required until we determine otherwise
     launch = False
 
-    if operation == 'find':
-        # Search for the app, constraining to the current desktop if appropriate
-        app = find_app_by_name_substr(window_name, current_desktop_only=search_current_desktop_only)
+    # If a target desktop was specified, find it
+    if target_desktop:
+        target_desktop_as_int = str_to_int(target_desktop)
+        if target_desktop_as_int:
+            d = find_desktop_by_number(number=target_desktop_as_int)
+        else:
+            d = find_desktop_by_name(name=target_desktop, exact=False)
+
+    if operation == 'find_anywhere':
+        # Search for the app across all desktops
+        app = find_app_by_name_substr(window_name, current_desktop_only=False)
+    
+    if operation == 'find_here':
+        # Search for the app only on the current desktop
+        app = find_app_by_name_substr(window_name, current_desktop_only=True)
+    
+    if operation in find_operations:
         if app:
-            if desktop == 'go':
-                # App found; switch to the desktop containing the window
+            # Window found
+            if desktop_operation == 'go_to_window':
+                # Switch to the desktop containing the window
                 app.desktop.go()
-            elif desktop == 'bring':
-                # App found; bring the window to the current desktop
+            elif desktop_operation == 'bring_to_user':
+                # Bring the window to the current desktop
                 app.move(VirtualDesktop.current())
-            elif type(desktop) == str:
-                d = find_desktop_by_name(name=desktop, exact=False)
-                app.move(d)
-            elif type(desktop) == int:
-                d = find_desktop_by_number(number=desktop)
-                app.move(d)
+            elif desktop_operation == 'take_to_desktop':
+                if d:
+                    app.move(d)
+                    d.go()
             # Focus the window
             app.switch_to()
         else:
+            # Window not found, try to launch app
             launch = True
 
     if operation == 'launch' or launch == True:
-        if desktop not in desktop_operations:
-            if type(desktop) == str:
-                d = find_desktop_by_name(name=desktop, exact=False)
-                d.go()
-            elif type(desktop) == int:
-                d = find_desktop_by_number(number=desktop)
+        if desktop_operation == 'take_to_desktop':
+            if d:
                 d.go()
         launch_app(path=path)
-
-    if operation not in operations:
-        raise ValueError(f"Invalid operation: {operation}")
-
-    # Use cases:
-    # 1. Find app anywhere, switch to its desktop and focus it. Fail -> launch it
-    #       find WINDOW 
-    # 2. Find app anywhere, bring to current desktop and focus it. Fail -> launch it
-    # 3. Find app on this desktop and focus it. Fail -> launch it
-    # 4. Launch new instance of app regardless of whether it's already open (if app supports it)
-
-    # print(f"operation: {operation}")
-    # print(f"window_name: {window_name}")
-    # print(f"desktop: {desktop}")
-    # print(f"path: {path}")
 
 if __name__ == '__main__':
     main()
