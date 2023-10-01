@@ -7,7 +7,7 @@ app-command is a command-line tool for exerting fine-grained control over how to
 
 Follow these steps to install and run the Python script:
 
-## Prerequisites
+### Prerequisites
 
 This script requires Windows 10 or newer and Python 3.x.
 
@@ -19,7 +19,7 @@ python --version
 
 If Python is not installed, download and install it from the official Python website.
 
-## Steps
+### Steps
 
 1. **Clone the repository**
 
